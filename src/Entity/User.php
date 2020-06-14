@@ -213,7 +213,7 @@ class User
      */
     public function getEmail(): ?string
     {
-        return $this->email;
+        return "Redacted";
     }
 
     /**
@@ -231,7 +231,7 @@ class User
      */
     public function getToken(): ?string
     {
-        return $this->token;
+        return "Redacted";
     }
 
     /**
