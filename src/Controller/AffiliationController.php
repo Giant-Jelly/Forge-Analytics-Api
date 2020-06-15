@@ -1,8 +1,11 @@
 <?php
 
+
 namespace App\Controller;
 
+
 use App\ApiError\ApiError;
+use App\Entity\Affiliation;
 use App\Entity\User;
 use App\Response\ApiResponse;
 use Doctrine\ORM\EntityManagerInterface;
@@ -17,20 +20,12 @@ use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\Serializer\Serializer;
 
 /**
- * @Route("/user", name="user_")
+ * @Route("/affiliations", name="affiliations_")
  * Class UserController
  * @package App\Controller
  */
-class UserController extends AbstractController
+class AffiliationController extends AbstractController
 {
-    const ROLES = [
-      'user' => User::ROLE_USER,
-      'coach' => User::ROLE_COACH,
-      'headcoach' => User::ROLE_HEAD_COACH,
-      'admin' => User::ROLE_ADMIN,
-      'superadmin' => User::ROLE_SUPER_ADMIN
-    ];
-
     /**
      * @var EntityManagerInterface
      */
@@ -55,23 +50,12 @@ class UserController extends AbstractController
             return ['id' => $innerObject->getId()];
         };
 
-        $ordersCallback = function ($innerObject, $outerObject, string $attributeName, string $format = null, array $context = []) {
-            $orders = $outerObject->getOrders();
-            $data = [];
-            foreach ($orders as $order) {
-                $data[] = [
-                    'id' => $order->getId()
-                ];
-            }
-            return $data;
-        };
 
         $defaultContext = [
             AbstractNormalizer::CALLBACKS => [
                 'createdAt' => $dateCallback,
-                'user' => $relationshipCallback,
-                'coach' => $relationshipCallback,
-                'orders' => $ordersCallback
+                'affiliate' => $relationshipCallback,
+                'discountCode' => $relationshipCallback
             ]
         ];
 
@@ -81,38 +65,26 @@ class UserController extends AbstractController
     }
 
     /**
-     * @Route("/total/{role}", name="total")
-     * @param string|null $role
+     * @Route("/total", name="total")
      * @return Response
      */
-    public function totalUsers(string $role = null): Response
+    public function totalAffiliations(): Response
     {
-        if ($role && !array_key_exists($role, self::ROLES)) {
-            $errors[] = (new ApiError("Requested role not found, possible roles are: " . implode(", ", array_keys(self::ROLES)) . ".", 404))->getError();
+        $affiliations = $this->em->getRepository(Affiliation::class)->count([]);
 
-            return new ApiResponse(null, 404, $errors);
-        }
-
-        $criteria = [];
-        if ($role) {
-            $criteria = ['role' => self::ROLES[$role]];
-        }
-
-        $users = $this->em->getRepository(User::class)->count($criteria);
-
-        return new ApiResponse($users);
+        return new ApiResponse($affiliations);
     }
 
     /**
-     * @Route("/{user}", name="user")
+     * @Route("/{affiliation}", name="affiliation")
      * @param Request $request
-     * @param User $user
+     * @param Affiliation|null $affiliation
      * @return Response
      * @throws ExceptionInterface
      */
-    public function user(Request $request, User $user = null): Response
+    public function affiliation(Request $request, Affiliation $affiliation = null): Response
     {
-        if (!$user) {
+        if (!$affiliation) {
             $errors[] = (new ApiError("User not found, or no user ID submitted", 404))->getError();
 
             return new ApiResponse(null, 404, $errors);
@@ -123,7 +95,7 @@ class UserController extends AbstractController
         $params[] = 'id';
         $params[] = 'username';
 
-        $data = $this->serializer->normalize($user, null, [AbstractNormalizer::ATTRIBUTES => $params]);
+        $data = $this->serializer->normalize($affiliation, null, [AbstractNormalizer::ATTRIBUTES => $params]);
 
         return new ApiResponse($data);
     }

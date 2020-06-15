@@ -1,9 +1,12 @@
 <?php
 
+
 namespace App\Controller;
 
+
 use App\ApiError\ApiError;
-use App\Entity\User;
+use App\Entity\Affiliate;
+use App\Entity\Tip;
 use App\Response\ApiResponse;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -17,20 +20,12 @@ use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\Serializer\Serializer;
 
 /**
- * @Route("/user", name="user_")
- * Class UserController
+ * @Route("/affiliates", name="affiliates_")
+ * Class TipController
  * @package App\Controller
  */
-class UserController extends AbstractController
+class AffiliateController extends AbstractController
 {
-    const ROLES = [
-      'user' => User::ROLE_USER,
-      'coach' => User::ROLE_COACH,
-      'headcoach' => User::ROLE_HEAD_COACH,
-      'admin' => User::ROLE_ADMIN,
-      'superadmin' => User::ROLE_SUPER_ADMIN
-    ];
-
     /**
      * @var EntityManagerInterface
      */
@@ -55,12 +50,12 @@ class UserController extends AbstractController
             return ['id' => $innerObject->getId()];
         };
 
-        $ordersCallback = function ($innerObject, $outerObject, string $attributeName, string $format = null, array $context = []) {
-            $orders = $outerObject->getOrders();
+        $affiliationCallback = function ($innerObject, $outerObject, string $attributeName, string $format = null, array $context = []) {
+            $affiliations = $outerObject->getAffiliations();
             $data = [];
-            foreach ($orders as $order) {
+            foreach ($affiliations as $affiliation) {
                 $data[] = [
-                    'id' => $order->getId()
+                    'id' => $affiliation->getId()
                 ];
             }
             return $data;
@@ -70,8 +65,7 @@ class UserController extends AbstractController
             AbstractNormalizer::CALLBACKS => [
                 'createdAt' => $dateCallback,
                 'user' => $relationshipCallback,
-                'coach' => $relationshipCallback,
-                'orders' => $ordersCallback
+                'affiliations' => $affiliationCallback
             ]
         ];
 
@@ -81,49 +75,35 @@ class UserController extends AbstractController
     }
 
     /**
-     * @Route("/total/{role}", name="total")
-     * @param string|null $role
+     * @Route("/total", name="total")
      * @return Response
      */
-    public function totalUsers(string $role = null): Response
+    public function totalAffiliates(): Response
     {
-        if ($role && !array_key_exists($role, self::ROLES)) {
-            $errors[] = (new ApiError("Requested role not found, possible roles are: " . implode(", ", array_keys(self::ROLES)) . ".", 404))->getError();
+        $tipsTotal = $this->em->getRepository(Affiliate::class)->count([]);
 
-            return new ApiResponse(null, 404, $errors);
-        }
-
-        $criteria = [];
-        if ($role) {
-            $criteria = ['role' => self::ROLES[$role]];
-        }
-
-        $users = $this->em->getRepository(User::class)->count($criteria);
-
-        return new ApiResponse($users);
+        return new ApiResponse($tipsTotal);
     }
 
     /**
-     * @Route("/{user}", name="user")
+     * @Route("/{affiliate}", name="affiliate")
      * @param Request $request
-     * @param User $user
+     * @param Affiliate|null $affiliate
      * @return Response
      * @throws ExceptionInterface
      */
-    public function user(Request $request, User $user = null): Response
+    public function tip(Request $request, Affiliate $affiliate = null): Response
     {
-        if (!$user) {
-            $errors[] = (new ApiError("User not found, or no user ID submitted", 404))->getError();
+        if (!$affiliate) {
+            $errors[] = (new ApiError("Affiliate not found, or no Affiliate ID submitted", 404))->getError();
 
             return new ApiResponse(null, 404, $errors);
         }
 
-        // Checks the URL for '?params=param,param,param' AND add the id and username by default
         $params = explode(',', $request->get('params'));
         $params[] = 'id';
-        $params[] = 'username';
 
-        $data = $this->serializer->normalize($user, null, [AbstractNormalizer::ATTRIBUTES => $params]);
+        $data = $this->serializer->normalize($affiliate, null, [AbstractNormalizer::ATTRIBUTES => $params]);
 
         return new ApiResponse($data);
     }
