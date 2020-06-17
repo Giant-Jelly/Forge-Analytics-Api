@@ -154,6 +154,7 @@ class OrderController extends AbstractController
 
         $orders = $this->em->getRepository(Order::class)->findBy($criteria);
         $params = explode(',', $request->get('params'));
+        $params[] = 'id';
 
         $data = [];
 

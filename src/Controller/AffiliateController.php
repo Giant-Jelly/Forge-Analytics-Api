@@ -80,9 +80,31 @@ class AffiliateController extends AbstractController
      */
     public function totalAffiliates(): Response
     {
-        $tipsTotal = $this->em->getRepository(Affiliate::class)->count([]);
+        $affiliateTotal = $this->em->getRepository(Affiliate::class)->count([]);
 
-        return new ApiResponse($tipsTotal);
+        return new ApiResponse($affiliateTotal);
+    }
+
+    /**
+     * @Route("/affiliates", name="affiliates")
+     * @param Request $request
+     * @return ApiResponse
+     * @throws ExceptionInterface
+     */
+    public function affiliates(Request $request): Response
+    {
+        $affiliates = $this->em->getRepository(Affiliate::class)->findAll();
+
+        $params = explode(',', $request->get('params'));
+        $params[] = 'id';
+
+        $data = [];
+
+        foreach ($affiliates as $affiliate) {
+            $data[] = $this->serializer->normalize($affiliate, null, [AbstractNormalizer::ATTRIBUTES => $params]);
+        }
+
+        return new ApiResponse($data);
     }
 
     /**
@@ -92,7 +114,7 @@ class AffiliateController extends AbstractController
      * @return Response
      * @throws ExceptionInterface
      */
-    public function tip(Request $request, Affiliate $affiliate = null): Response
+    public function affiliate(Request $request, Affiliate $affiliate = null): Response
     {
         if (!$affiliate) {
             $errors[] = (new ApiError("Affiliate not found, or no Affiliate ID submitted", 404))->getError();
