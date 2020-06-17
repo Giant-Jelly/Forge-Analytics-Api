@@ -85,7 +85,7 @@ class AffiliationController extends AbstractController
     public function affiliation(Request $request, Affiliation $affiliation = null): Response
     {
         if (!$affiliation) {
-            $errors[] = (new ApiError("User not found, or no user ID submitted", 404))->getError();
+            $errors[] = (new ApiError("Affiliation not found, or no affiliation ID submitted", 404))->getError();
 
             return new ApiResponse(null, 404, $errors);
         }
@@ -93,7 +93,6 @@ class AffiliationController extends AbstractController
         // Checks the URL for '?params=param,param,param' AND add the id and username by default
         $params = explode(',', $request->get('params'));
         $params[] = 'id';
-        $params[] = 'username';
 
         $data = $this->serializer->normalize($affiliation, null, [AbstractNormalizer::ATTRIBUTES => $params]);
 
