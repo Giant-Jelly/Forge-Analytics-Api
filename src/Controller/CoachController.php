@@ -80,7 +80,7 @@ class CoachController extends AbstractController
      * @return Response
      * @throws ExceptionInterface
      */
-    public function user(Request $request, Coach $coach = null): Response
+    public function coach(Request $request, Coach $coach = null): Response
     {
         if (!$coach) {
             $errors[] = (new ApiError("Coach not found, or no Coach ID submitted", 404))->getError();
