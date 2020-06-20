@@ -5,8 +5,7 @@ namespace App\Controller;
 
 
 use App\ApiError\ApiError;
-use App\Entity\Affiliate;
-use App\Entity\Tip;
+use App\Entity\DiscountCode;
 use App\Response\ApiResponse;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,11 +19,11 @@ use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\Serializer\Serializer;
 
 /**
- * @Route("/affiliates", name="affiliates_")
- * Class TipController
+ * @Route("/discountCodes", name="discountCodes_")
+ * Class DiscountCodeController
  * @package App\Controller
  */
-class AffiliateController extends AbstractController
+class DiscountCodeController extends AbstractController
 {
     /**
      * @var EntityManagerInterface
@@ -51,21 +50,21 @@ class AffiliateController extends AbstractController
         };
 
         $affiliationCallback = function ($innerObject, $outerObject, string $attributeName, string $format = null, array $context = []) {
-            $affiliations = $outerObject->getAffiliations();
-            $data = [];
-            foreach ($affiliations as $affiliation) {
-                $data[] = [
-                    'id' => $affiliation->getId()
-                ];
+            $affiliations = $outerObject->getAffiliation();
+            $data = "No affiliation";
+
+            if ($affiliations) {
+                $data = ['id' => $affiliations->getId()];
             }
+
             return $data;
         };
 
         $defaultContext = [
             AbstractNormalizer::CALLBACKS => [
                 'createdAt' => $dateCallback,
-                'user' => $relationshipCallback,
-                'affiliations' => $affiliationCallback
+                'orders' => $relationshipCallback,
+                'affiliation' => $affiliationCallback
             ]
         ];
 
@@ -78,24 +77,48 @@ class AffiliateController extends AbstractController
      * @Route("/total", name="total")
      * @return Response
      */
-    public function totalAffiliates(): Response
+    public function totalDiscountCodes(): Response
     {
-        $tipsTotal = $this->em->getRepository(Affiliate::class)->count([]);
+        $disTotal = $this->em->getRepository(DiscountCode::class)->count([]);
 
-        return new ApiResponse($tipsTotal);
+        return new ApiResponse($disTotal);
     }
 
     /**
-     * @Route("/{affiliate}", name="affiliate")
+     * @Route("/discountCodes", name="discountCodes")
      * @param Request $request
-     * @param Affiliate|null $affiliate
      * @return Response
      * @throws ExceptionInterface
      */
-    public function affiliate(Request $request, Affiliate $affiliate = null): Response
+    public function discountCodes(Request $request): Response
     {
-        if (!$affiliate) {
-            $errors[] = (new ApiError("Affiliate not found, or no Affiliate ID submitted", 404))->getError();
+        $disCodes = $this->em->getRepository(DiscountCode::class)->findBy([]);
+        $params = explode(',', $request->get('params'));
+
+        $params[] = 'id';
+        $params[] = 'code';
+        $params[] = 'affiliation';
+
+        $data = [];
+
+        /** @var DiscountCode $discountcode */
+        foreach ($disCodes as $disCode) {
+            $data[] = $this->serializer->normalize($disCode, null, [AbstractNormalizer::ATTRIBUTES => $params]);
+        }
+        return new ApiResponse($data);
+    }
+
+    /**
+     * @Route("/{discountCode}", name="discountCode")
+     * @param Request $request
+     * @param DiscountCode|null $discountCode
+     * @return Response
+     * @throws ExceptionInterface
+     */
+    public function discountCode(Request $request, DiscountCode $discountCode = null): Response
+    {
+        if (!$discountCode) {
+            $errors[] = (new ApiError("Discount Code not found, or no Discount Code ID submitted", 404))->getError();
 
             return new ApiResponse(null, 404, $errors);
         }
@@ -103,7 +126,7 @@ class AffiliateController extends AbstractController
         $params = explode(',', $request->get('params'));
         $params[] = 'id';
 
-        $data = $this->serializer->normalize($affiliate, null, [AbstractNormalizer::ATTRIBUTES => $params]);
+        $data = $this->serializer->normalize($discountCode, null, [AbstractNormalizer::ATTRIBUTES => $params]);
 
         return new ApiResponse($data);
     }

@@ -1,12 +1,9 @@
 <?php
 
-
 namespace App\Controller;
 
-
 use App\ApiError\ApiError;
-use App\Entity\Affiliate;
-use App\Entity\Tip;
+use App\Entity\OrderNote;
 use App\Response\ApiResponse;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,11 +17,11 @@ use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\Serializer\Serializer;
 
 /**
- * @Route("/affiliates", name="affiliates_")
- * Class TipController
+ * @Route("/orderNotes", name="orderNotes_")
+ * Class OrderNoteController
  * @package App\Controller
  */
-class AffiliateController extends AbstractController
+class OrderNoteController extends AbstractController
 {
     /**
      * @var EntityManagerInterface
@@ -50,22 +47,11 @@ class AffiliateController extends AbstractController
             return ['id' => $innerObject->getId()];
         };
 
-        $affiliationCallback = function ($innerObject, $outerObject, string $attributeName, string $format = null, array $context = []) {
-            $affiliations = $outerObject->getAffiliations();
-            $data = [];
-            foreach ($affiliations as $affiliation) {
-                $data[] = [
-                    'id' => $affiliation->getId()
-                ];
-            }
-            return $data;
-        };
-
         $defaultContext = [
             AbstractNormalizer::CALLBACKS => [
                 'createdAt' => $dateCallback,
-                'user' => $relationshipCallback,
-                'affiliations' => $affiliationCallback
+                'order' => $relationshipCallback,
+                'author' => $relationshipCallback
             ]
         ];
 
@@ -78,32 +64,58 @@ class AffiliateController extends AbstractController
      * @Route("/total", name="total")
      * @return Response
      */
-    public function totalAffiliates(): Response
+    public function totalOrderNotes(): Response
     {
-        $tipsTotal = $this->em->getRepository(Affiliate::class)->count([]);
+        $totalOrderNotes = $this->em->getRepository(OrderNote::class)->count([]);
 
-        return new ApiResponse($tipsTotal);
+        return new ApiResponse($totalOrderNotes);
     }
 
     /**
-     * @Route("/{affiliate}", name="affiliate")
+     * @Route("/orderNotes", name="orderNotes")
      * @param Request $request
-     * @param Affiliate|null $affiliate
      * @return Response
      * @throws ExceptionInterface
      */
-    public function affiliate(Request $request, Affiliate $affiliate = null): Response
+    public function orderNotes(Request $request): Response
     {
-        if (!$affiliate) {
-            $errors[] = (new ApiError("Affiliate not found, or no Affiliate ID submitted", 404))->getError();
+        $orderNotes = $this->em->getRepository(OrderNote::class)->findBy([]);
+        $params = explode(',', $request->get('params'));
+        $params[] = 'id';
+        $params[] = 'text';
+        $params[] = 'author';
+        $params[] = 'order';
+
+        $data = [];
+
+        foreach ($orderNotes as $orderNote) {
+            $data[] = $this->serializer->normalize($orderNote, null, [AbstractNormalizer::ATTRIBUTES => $params]);
+        }
+
+        return new ApiResponse($data);
+    }
+
+    /**
+     * @Route("/{orderNote}", name="orderNote")
+     * @param Request $request
+     * @param OrderNote|null $orderNote
+     * @return Response
+     * @throws ExceptionInterface
+     */
+    public function orderNote(Request $request, OrderNote $orderNote = null): Response
+    {
+        if (!$orderNote) {
+            $errors[] = (new ApiError("Order Log Item not found, or no Order Log Item ID submitted", 404))->getError();
 
             return new ApiResponse(null, 404, $errors);
         }
 
         $params = explode(',', $request->get('params'));
         $params[] = 'id';
+        $params[] = 'message';
+        $params[] = 'order';
 
-        $data = $this->serializer->normalize($affiliate, null, [AbstractNormalizer::ATTRIBUTES => $params]);
+        $data = $this->serializer->normalize($orderNote, null, [AbstractNormalizer::ATTRIBUTES => $params]);
 
         return new ApiResponse($data);
     }

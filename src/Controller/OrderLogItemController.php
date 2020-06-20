@@ -1,12 +1,9 @@
 <?php
 
-
 namespace App\Controller;
 
-
 use App\ApiError\ApiError;
-use App\Entity\Affiliate;
-use App\Entity\Tip;
+use App\Entity\OrderLogItem;
 use App\Response\ApiResponse;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,11 +17,11 @@ use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\Serializer\Serializer;
 
 /**
- * @Route("/affiliates", name="affiliates_")
- * Class TipController
+ * @Route("/orderLogItems", name="orderLogItems_")
+ * Class OrderLogItemController
  * @package App\Controller
  */
-class AffiliateController extends AbstractController
+class OrderLogItemController extends AbstractController
 {
     /**
      * @var EntityManagerInterface
@@ -50,22 +47,10 @@ class AffiliateController extends AbstractController
             return ['id' => $innerObject->getId()];
         };
 
-        $affiliationCallback = function ($innerObject, $outerObject, string $attributeName, string $format = null, array $context = []) {
-            $affiliations = $outerObject->getAffiliations();
-            $data = [];
-            foreach ($affiliations as $affiliation) {
-                $data[] = [
-                    'id' => $affiliation->getId()
-                ];
-            }
-            return $data;
-        };
-
         $defaultContext = [
             AbstractNormalizer::CALLBACKS => [
                 'createdAt' => $dateCallback,
-                'user' => $relationshipCallback,
-                'affiliations' => $affiliationCallback
+                'order' => $relationshipCallback
             ]
         ];
 
@@ -78,32 +63,57 @@ class AffiliateController extends AbstractController
      * @Route("/total", name="total")
      * @return Response
      */
-    public function totalAffiliates(): Response
+    public function totalOrderLogItems(): Response
     {
-        $tipsTotal = $this->em->getRepository(Affiliate::class)->count([]);
+        $totalOlis = $this->em->getRepository(OrderLogItem::class)->count([]);
 
-        return new ApiResponse($tipsTotal);
+        return new ApiResponse($totalOlis);
     }
 
     /**
-     * @Route("/{affiliate}", name="affiliate")
+     * @Route("/orderLogItems", name="orderLogItems")
      * @param Request $request
-     * @param Affiliate|null $affiliate
      * @return Response
      * @throws ExceptionInterface
      */
-    public function affiliate(Request $request, Affiliate $affiliate = null): Response
+    public function orderLogItems(Request $request): Response
     {
-        if (!$affiliate) {
-            $errors[] = (new ApiError("Affiliate not found, or no Affiliate ID submitted", 404))->getError();
+        $olis = $this->em->getRepository(OrderLogItem::class)->findBy([]);
+        $params = explode(',', $request->get('params'));
+        $params[] = 'id';
+        $params[] = 'message';
+        $params[] = 'order';
+
+        $data = [];
+
+        foreach ($olis as $oli) {
+            $data[] = $this->serializer->normalize($oli, null, [AbstractNormalizer::ATTRIBUTES => $params]);
+        }
+
+        return new ApiResponse($data);
+    }
+
+    /**
+     * @Route("/{orderLogItem}", name="orderLogItem")
+     * @param Request $request
+     * @param OrderLogItem|null $orderLogItem
+     * @return Response
+     * @throws ExceptionInterface
+     */
+    public function orderLogItem(Request $request, OrderLogItem $orderLogItem = null): Response
+    {
+        if (!$orderLogItem) {
+            $errors[] = (new ApiError("Order Log Item not found, or no Order Log Item ID submitted", 404))->getError();
 
             return new ApiResponse(null, 404, $errors);
         }
 
         $params = explode(',', $request->get('params'));
         $params[] = 'id';
+        $params[] = 'message';
+        $params[] = 'order';
 
-        $data = $this->serializer->normalize($affiliate, null, [AbstractNormalizer::ATTRIBUTES => $params]);
+        $data = $this->serializer->normalize($orderLogItem, null, [AbstractNormalizer::ATTRIBUTES => $params]);
 
         return new ApiResponse($data);
     }
